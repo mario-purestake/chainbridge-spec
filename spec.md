@@ -86,7 +86,7 @@ func executeProposal(originChain ChainId, depositId uint, metadata []byte)
 - `to: chain-specific`: The address of the recipietn
 - `amount: uint`: The amount of a token to be transfered
 // Im not sold on this. Should the contracts know about their chain Id?
-- `id: string`: Unique id in the format of `<origin_chain><id_unique_to_chain>`
+- `id: string`: Unique id in the format of `<origin_chain><unique_id>`
 - TBD
 
 # On-chain requirements
@@ -108,3 +108,6 @@ func executeProposal(originChain ChainId, depositId uint, metadata []byte)
     3. The handler then needs to determine if the token's home address is the current chain.
         1. If so, the corresponding Safe should have that token locked. It should then release the `amount` tokens to the `to` address defined in the `tokenMessageFormat`.
         2. If not, the Safe handler should mint `amount` tokens to the `to` address defined in the `tokenMEssageFormat`
+
+## Identying a synthetic from a native token
+To properly identify a token, the `tokenMessageFormat` contains a filed `id`. The id follows the format of `<origin_chain><unique_id>`, Where, `id` is the full string, and `id[:4]` are reserved for the chain_id, and `id[4:]` are reserved for the `unique_id`. Every chain is the responsible for keeping a reference of the unique_id.
