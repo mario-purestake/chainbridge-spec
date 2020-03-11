@@ -2,20 +2,21 @@
 
 ### Definitions
 
+- `Account`: a user on a blockchain
 - `Address`: unique identifier for a user on a given blockchain. Commonly the public key from a keypair.
-- `Token`: the representation of an asset, which an address can "own".
+- `Token`: the representation of an asset, which an account can "own".
 - `Home Chain`: every token has a `Home Chain`, which is the chain where the token primarily exists.
+- `Native Token`: the underlying token of a blockchain that secures the network.
 - `Synthetic Token`: a representation of a Token on any chain that is not the `Home Chain`.
 - `Event`: a piece of data stored on-chain, explaining that a certain operation occurred.
-- `Validator`: an address that has the ability to call functions not available to the public.
+- `Validator`: an account that has the ability to call functions not available to the public, also responsible for running the bridge software.
 - `Proposal`: a transfer request from one chain to another.
 - `Threshold`: the number of required votes to pass a proposal.
 - `Handler`: a method which resolves the transfer of a token
 - `Hash`: some hashing algorithm, this does not need to be standardized across all blockchains.
 - `ChainId`: a unique identifier associated with a single chain (TODO: Specify how they are chosen)
-
 // TODO: Remove or change
-- `Safe`: A set of functions that live on a blockchain. The Safe can take ownership of tokens, and is able to also transfer them.
+- `Safe`: an account that can be in possession of a token or native token. The Safe maintains custody of assets that are transferred out of the chain.
 - `Handler`: Responsible for decoding deposits, typically paired with a Safe. Note: Handlers have a relationship between blockchains. The metadata field must be standardized between every blockchain.
 
 ### Assumptions
@@ -52,14 +53,14 @@ var Threshold uint
 type DepositEvent event {
     destChain: uint,
     depositId: uint,
-    to: address,
+    to: account,
     amount: uint,
 }
 ```
 
 - `destChain`: the `ChainId` denoting the blockchain where the deposit should be made.
 - `depositId`: the nonce for the deposit, found be querying `ChainCounters`
-- `to`: the address of the recipient of a specific deposit on the destination chain
+- `to`: the account of the recipient of a specific deposit on the destination chain
 - `amount`: The amount of a specific token that will be transferred
 
 ### Interfaces & Methods
@@ -83,7 +84,7 @@ func executeProposal(originChain ChainId, depositId uint, metadata []byte)
 ### Messaging Formats
 `tokenMessageFormat`
 // TODO define how many bytes to parse. eg: to = metadata[:32], amount = metadata[32:40]
-- `to: chain-specific`: The address of the recipietn
+- `to: chain-specific`: The account of the recipient
 - `amount: uint`: The amount of a token to be transfered
 // Im not sold on this. Should the contracts know about their chain Id?
 - `id: string`: Unique id in the format of `<origin_chain><unique_id>`
@@ -92,8 +93,8 @@ func executeProposal(originChain ChainId, depositId uint, metadata []byte)
 # On-chain requirements
 ## Specification for moving tokens
 1. Deposit Tokens
-    0. An address ("AddressA") has ownership over some amount of tokens ("ABCToken")
-    1. AddressA invokes a function to make a valid transfer of some amount of ABCToken into the Safe.
+    0. An account ("AccountA") has ownership over some amount of tokens ("ABCToken")
+    1. AccountA invokes a function to make a valid transfer of some amount of ABCToken into the Safe.
     2. An event of type `DepositEvent` is invoked.
 
 2. Receiving Tokens
@@ -105,9 +106,9 @@ func executeProposal(originChain ChainId, depositId uint, metadata []byte)
 3. Handlers
     1. A handler consumes the `metadata` supplied from the `executeDeposit()`.
     2. The handler decodes the `metadata` as defined in the `tokenMessageFormat`.
-    3. The handler then needs to determine if the token's home address is the current chain.
-        1. If so, the corresponding Safe should have that token locked. It should then release the `amount` tokens to the `to` address defined in the `tokenMessageFormat`.
-        2. If not, the Safe handler should mint `amount` tokens to the `to` address defined in the `tokenMEssageFormat`
+    3. The handler then needs to determine if the token's home chain is the current chain.
+        1. If so, the corresponding Safe should have that token locked. It should then release the `amount` tokens to the `to` account defined in the `tokenMessageFormat`.
+        2. If not, the Safe handler should mint `amount` tokens to the `to` account defined in the `tokenMEssageFormat`
 
 ## Identying a synthetic from a native token
-To properly identify a token, the `tokenMessageFormat` contains a filed `id`. The id follows the format of `<origin_chain><unique_id>`, Where, `id` is the full string, and `id[:4]` are reserved for the chain_id, and `id[4:]` are reserved for the `unique_id`. Every chain is the responsible for keeping a reference of the unique_id.
+To properly identify a token, the `tokenMessageFormat` contains a field `id`. The id follows the format of `<origin_chain><unique_id>`, Where, `id` is the full string, and `id[:4]` are reserved for the chain_id, and `id[4:]` are reserved for the `unique_id`. Every chain is the responsible for keeping a reference of the unique_id.
