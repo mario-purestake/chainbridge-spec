@@ -12,7 +12,7 @@
 - `Validator`: an account that has the ability to call functions not available to the public, also responsible for running the bridge software.
 - `Proposal`: a transfer request from one chain to another.
 - `Threshold`: the number of required votes to pass a proposal.
-- `Handler`: a method which resolves the transfer of a token
+- `Handler`: a method which resolves the transfer of data
 - `Hash`: some hashing algorithm, this does not need to be standardized across all blockchains.
 - `ChainId`: a unique identifier associated with a single chain (TODO: Specify how they are chosen)
 // TODO: Remove or change
@@ -27,7 +27,11 @@ Every blockchain must have:
 - a mechanism to ensure calls to the on-chain bridge logic can be limited to those signed by validators
 - the following state, events, and methods are provided by the chain
 
-### State
+# State
+
+### Constants
+- `chain_id`: All chains are assigned a `chain_id`, and therefore all chains will need to know about their own `chain_id`.
+
 
 TODO: Whitelist chains
 
@@ -64,6 +68,9 @@ type DepositEvent event {
 - `amount`: The amount of a specific token that will be transferred
 
 ### Interfaces & Methods
+```go
+func deposit()
+```
 
 ```go
 func createProposal(hash [32]byte, originChain ChainId, depositId uint)
@@ -74,21 +81,47 @@ func createProposal(hash [32]byte, originChain ChainId, depositId uint)
 - `depositId`: The deposit Id that was generated on the `originChain`
 
 ```go
-func executeProposal(originChain ChainId, depositId uint, metadata []byte)
+func executeProposal(originChain ChainId, depositId uint, []T params)
 ```
-//TODO: Do we need hash as a param?
 - `originChain`: The unique `ChainId` denoting which chain the deposit came from.
-- `depositId`: The deposit Id that was generated on the `originChain`
-- `metadata`: Byte arrary that is decoded by a handler
+- `depositId`: The deposit Id that was generated on the `originChain`.
+- `params`: Any specific parameters pertaining to a given chain.
 
-### Messaging Formats
+### Message Formats
 `tokenMessageFormat`
 // TODO define how many bytes to parse. eg: to = metadata[:32], amount = metadata[32:40]
 - `to: chain-specific`: The account of the recipient
 - `amount: uint`: The amount of a token to be transfered
-// Im not sold on this. Should the contracts know about their chain Id?
+// TODO cleanup id
 - `id: string`: Unique id in the format of `<origin_chain><unique_id>`
 - TBD
+
+## Lifecycles
+### Proposal Voting
+1. A proposal is created with `createProposal`
+2. Once a proposal is created, other validators may vote on that proposal until the threshold is met. Where `yesVotes >= threshold || noVotes >= threshold`
+3. If the threshold is met, and the number of `yesVotes` approved a proposal, the deposit can be executed. The deposit function needs at minimum the paramters denoted in `executeProposal()`.
+4. To succesfully execute a deposit, the hash provided in `createProposal()` must match the corresponding values submitted to executeDeposit(), if the hashes do not match, the transaction cannot proceed.
+
+### Handler Lifecycle
+- A handler is responsible for both the deposit and receiving of a transfer.
+- Access to a handler should be restricted by the approval of a deposit, thus a handler should be called upon when the criteria for `executeProposal()` is met.
+0. A proposal has been accepted.
+1. A handler consumes the any required params from the `executeProposal()`.
+2. The respective handler consume the parameters, and performs necessary logic to complete its oppperations.
+
+## Tokens
+### Depositing Tokens
+0. An address ("AddressA") has ownership over some amount of tokens ("ABCToken")
+1. AddressA invokes a function to transfer the tokens. This call should emit an event which can be read by the bridge software.
+3. AddressA invokes a function to make a valid transfer of some amount of ABCToken into the Safe.
+4. An event of type `DepositEvent` is invoked.
+
+### Receiving Tokens
+0. A proposal has been accepted per the terms listed in [Proposal Voting](#Proposal-Voting)
+1. The handler then needs to determine if the token's home address is the current chain.
+    1. If so, the corresponding Safe should have that token locked. It should then release the `amount` tokens to the `to` address defined in the `tokenMessageFormat`.
+    2. If not, the Safe handler should mint `amount` tokens to the `to` address defined in the `tokenMEssageFormat`
 
 # On-chain requirements
 ## Specification for moving tokens
@@ -98,10 +131,9 @@ func executeProposal(originChain ChainId, depositId uint, metadata []byte)
     2. An event of type `DepositEvent` is invoked.
 
 2. Receiving Tokens
-    1. A proposal is created with `createProposal`
-    2. Once a proposal is created, other validators may vote on that proposal until the threshold is met. Where `yesVotes >= threshold || validatorSet.length - noVotes < threshold`
-    3. If the threshold is met, and the number of `yesVotes` approved a proposal, a validator can execute the deposit. The deposit function needs at minimum the paramters denoted in `executeDeposit()`.
-    4. To succesfully execute a deposit, the hash provided in `createProposal()` must match the corresponding values submitted to executeDeposit(), if the hashes do not match, the transaction cannot proceed.
+    1. A proposal with event type of `DepositProposalCreated` is invoked.
+    2. Validators then should vote on that proposal.
+    3. If the threshold is met, then a handler should be invoked to perform the transfer.
 
 3. Handlers
     1. A handler consumes the `metadata` supplied from the `executeDeposit()`.
@@ -110,5 +142,41 @@ func executeProposal(originChain ChainId, depositId uint, metadata []byte)
         1. If so, the corresponding Safe should have that token locked. It should then release the `amount` tokens to the `to` account defined in the `tokenMessageFormat`.
         2. If not, the Safe handler should mint `amount` tokens to the `to` account defined in the `tokenMEssageFormat`
 
+----
+# WIP Notes
+
+Main functions
+- A chain has validators
+- Only validators can create proposals
+- A chain keeps track of the amount of deposits made
+- Validators can vote on proposals
+- Handlers must support tokens that resemble the ERC20 standard, and the ERC721
+- The ERC based handlers should allow for whitelisting of tokens
+- A token that leaves its home-chain becomes a synthetic, that synthetic cannot go anywhere else but back to its home-chain
+
 ## Identying a synthetic from a native token
 To properly identify a token, the `tokenMessageFormat` contains a field `id`. The id follows the format of `<origin_chain><unique_id>`, Where, `id` is the full string, and `id[:4]` are reserved for the chain_id, and `id[4:]` are reserved for the `unique_id`. Every chain is the responsible for keeping a reference of the unique_id.
+
+## Ethereum specific functions
+```go
+func executeProposal(originChain ChainId, depositId uint, handlerAddress address, metadata []byte)
+```
+- `originChain`: The unique `ChainId` denoting which chain the deposit came from.
+- `handlerAddress`: The corresponding address of a handler account.
+- `depositId`: The deposit Id that was generated on the `originChain`
+- `metadata`: Byte arrary that is decoded by a handler
+
+2. Receiving Tokens
+    1. A proposal is created with `createProposal`
+    2. Once a proposal is created, other validators may vote on that proposal until the threshold is met. Where `yesVotes >= threshold || validatorSet.length - noVotes < threshold`
+    3. If the threshold is met, and the number of `yesVotes` approved a proposal, a validator can execute the deposit. The deposit function needs at minimum the paramters denoted in `executeDeposit()`.
+    4. To succesfully execute a deposit, the hash provided in `createProposal()` must match the corresponding values submitted to executeDeposit(), if the hashes do not match, the transaction cannot proceed.
+
+### Handler Lifecycle
+- A handler is responsible for both the deposit and receiving of a transfer.
+- Access to a handler should be restricted by the approval of a deposit, thus a handler should be called upon when the criteria for `executeProposal()` is met.
+0. A proposal has been accepted.
+1. A handler consumes the any required params from the `executeProposal()`.
+// Eth specific
+2. The respective handler decodes the `metadata` as defined in the `Message Fromats` section.
+3. Upon decoding of the message, the Handler is free to perform its opperations.
