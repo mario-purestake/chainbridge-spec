@@ -9,7 +9,7 @@
 - `Native Token`: the underlying token of a blockchain that secures the network.
 - `Synthetic Token`: a representation of a Token on any chain that is not the `Home Chain`.
 - `Event`: a piece of data stored on-chain, explaining that a certain operation occurred.
-- `Validator`: an account that has the ability to call functions not available to the public, also responsible for running the bridge software.
+- `Relayer`: an account that has the ability to call functions not available to the public, also responsible for running the bridge software.
 - `Proposal`: a transfer request from one chain to another.
 - `Threshold`: the number of required votes to pass a proposal.
 - `Handler`: a method which resolves the transfer of data
@@ -23,8 +23,8 @@
 Every blockchain must have:
 - the capability of executing application-specific code written for the purpose of bridging (eg: substrate -> pallets, ethereum -> smart contracts)
 - some way to represent a token that is interoperable with the ERC standards
-- the ability to track a set of bridge validators (TODO: How configurable does this need to be)
-- a mechanism to ensure calls to the on-chain bridge logic can be limited to those signed by validators
+- the ability to track a set of bridge relayers (TODO: How configurable does this need to be)
+- a mechanism to ensure calls to the on-chain bridge logic can be limited to those signed by relayers
 - the following state, events, and methods are provided by the chain
 
 # State
@@ -99,7 +99,7 @@ func executeProposal(originChain ChainId, depositId uint, []T params)
 ## Lifecycles
 ### Proposal Voting
 1. A proposal is created with `createProposal`
-2. Once a proposal is created, other validators may vote on that proposal until the threshold is met. Where `yesVotes >= threshold || noVotes >= threshold`
+2. Once a proposal is created, other relayers may vote on that proposal until the threshold is met. Where `yesVotes >= threshold || noVotes >= threshold`
 3. If the threshold is met, and the number of `yesVotes` approved a proposal, the deposit can be executed. The deposit function needs at minimum the paramters denoted in `executeProposal()`.
 4. To succesfully execute a deposit, the hash provided in `createProposal()` must match the corresponding values submitted to executeDeposit(), if the hashes do not match, the transaction cannot proceed.
 
@@ -132,7 +132,7 @@ func executeProposal(originChain ChainId, depositId uint, []T params)
 
 2. Receiving Tokens
     1. A proposal with event type of `DepositProposalCreated` is invoked.
-    2. Validators then should vote on that proposal.
+    2. Relayers then should vote on that proposal.
     3. If the threshold is met, then a handler should be invoked to perform the transfer.
 
 3. Handlers
@@ -146,10 +146,10 @@ func executeProposal(originChain ChainId, depositId uint, []T params)
 # WIP Notes
 
 Main functions
-- A chain has validators
-- Only validators can create proposals
+- A chain has relayers
+- Only relayers can create proposals
 - A chain keeps track of the amount of deposits made
-- Validators can vote on proposals
+- Relayers can vote on proposals
 - Handlers must support tokens that resemble the ERC20 standard, and the ERC721
 - The ERC based handlers should allow for whitelisting of tokens
 - A token that leaves its home-chain becomes a synthetic, that synthetic cannot go anywhere else but back to its home-chain
@@ -168,8 +168,8 @@ func executeProposal(originChain ChainId, depositId uint, handlerAddress address
 
 2. Receiving Tokens
     1. A proposal is created with `createProposal`
-    2. Once a proposal is created, other validators may vote on that proposal until the threshold is met. Where `yesVotes >= threshold || validatorSet.length - noVotes < threshold`
-    3. If the threshold is met, and the number of `yesVotes` approved a proposal, a validator can execute the deposit. The deposit function needs at minimum the paramters denoted in `executeDeposit()`.
+    2. Once a proposal is created, other relayers may vote on that proposal until the threshold is met. Where `yesVotes >= threshold || relayerSet.length - noVotes < threshold`
+    3. If the threshold is met, and the number of `yesVotes` approved a proposal, a relayer can execute the deposit. The deposit function needs at minimum the paramters denoted in `executeDeposit()`.
     4. To succesfully execute a deposit, the hash provided in `createProposal()` must match the corresponding values submitted to executeDeposit(), if the hashes do not match, the transaction cannot proceed.
 
 ### Handler Lifecycle
