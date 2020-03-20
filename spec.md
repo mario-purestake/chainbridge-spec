@@ -27,16 +27,21 @@ Every blockchain must have:
 - a mechanism to ensure calls to the on-chain bridge logic can be limited to those signed by relayers
 - the following state, events, and methods are provided by the chain
 
-# State
+### Types
+In the specification there are references to different types, below are the intentions behind them.
+|Type |Definition |
+|---|---|
+|uint |32 bit unsigned integers |
+|[]byte | An arbitrary sized array of bytes |
+|[x]byte | An fixed sized array of `x` bytes |
+
+## On-Chain State
+All chains will need to have a few hardcoded constants, and keep track of some state.
 
 ### Constants
-- `chain_id`: All chains are assigned a `chain_id`, and therefore all chains will need to know about their own `chain_id`.
+- `CHAIN_ID`: All chains are assigned a `chain_id`, and therefore all chains will need to know about their own `chain_id`.
 
-
-TODO: Whitelist chains
-
-Every chain should track the following state:
-
+### State
 ```go
 type Counter struct {
     received: uint,
@@ -45,25 +50,47 @@ type Counter struct {
 
 // For all whitelisted chains the number of transactions between that 
 // chain and the current chain must be tracked. These values are used 
-// to assign `depositId` to a proposal.
+// to assign `depositNonce` to a proposal.
 var ChainCounters map[ChainId]Counter
 
 // The number of votes required for a proposal to pass (or fail).
 var Threshold uint
+
+// TODO Add whitelisted chains
 ```
+
+## Message Formats
+To effectively move data around, there are a few message types, these types have their own respective format for a how a message should be resolved on-chain. The types are:
+- Tokens
+- Arbitrary Messages
+
+
+### Token Message Format
+- `id: string`: Unique id in the format of `<origin_chain_id><unique_id>`, where the `origin_chain_id` is 4 bytes in length, and the `unique_id` is 32 bytes in length.
+- `to: address`: The account representing the recipient
+- `amount: uint`: The amount of a token to be transfered
+- `destChainId: chainId`: The destination chainId
+- `depositNonce: uint`: The nonce for the deposit, found be querying `ChainCounters`
+- `metadata: []byte`: Can be any structured data (if needed)
+- `handlerAddress: address || null`: The account of the on-chain handler (if needed, based on destination chain)
+
+#### Disecting `token.id`
+`id` is a way for chains to understand where a token originated from. It is determined on the home chain of a given token. This is necessary to distinguish proposals, and to ensure chains can't have identifier conflicts.
+
+`token.id` is comprised of two pieces: `chain_id` and `unique_id`. `chain_id` is the home `chain_id`, the `unique_id` is a some identifier that allows the home chain to easily map the token to its native account. For evm based chains, this would most likely be the address, that way the home chain can easily interpret where to release funds from (rather than mint). 
 
 ### Events
 ```go
 type DepositEvent event {
     destChain: uint,
-    depositId: uint,
+    depositNonce: uint,
     to: account,
     amount: uint,
 }
 ```
 
 - `destChain`: the `ChainId` denoting the blockchain where the deposit should be made.
-- `depositId`: the nonce for the deposit, found be querying `ChainCounters`
+- `depositNonce`: the nonce for the deposit, found be querying `ChainCounters`
 - `to`: the account of the recipient of a specific deposit on the destination chain
 - `amount`: The amount of a specific token that will be transferred
 
@@ -73,28 +100,20 @@ func deposit()
 ```
 
 ```go
-func createProposal(hash [32]byte, originChain ChainId, depositId uint)
+func createProposal(hash [32]byte, originChain ChainId, depositNonce uint)
 ```
 // TODO: What about metadata?
-- `hash`: a hash of `originChain`, `depositId` (from the origin chain), and `metadata`
+- `hash`: a hash of `originChain`, `depositNonce` (from the origin chain), and `metadata`
 - `originChain`: The unique `ChainId` denoting which chain the deposit came from.
-- `depositId`: The deposit Id that was generated on the `originChain`
+- `depositNonce`: The deposit Id that was generated on the `originChain`
 
 ```go
-func executeProposal(originChain ChainId, depositId uint, []T params)
+func executeProposal(originChain ChainId, depositNonce uint, []T params)
 ```
 - `originChain`: The unique `ChainId` denoting which chain the deposit came from.
-- `depositId`: The deposit Id that was generated on the `originChain`.
+- `depositNonce`: The deposit Id that was generated on the `originChain`.
 - `params`: Any specific parameters pertaining to a given chain.
 
-### Message Formats
-`tokenMessageFormat`
-// TODO define how many bytes to parse. eg: to = metadata[:32], amount = metadata[32:40]
-- `to: chain-specific`: The account of the recipient
-- `amount: uint`: The amount of a token to be transfered
-// TODO cleanup id
-- `id: string`: Unique id in the format of `<origin_chain><unique_id>`
-- TBD
 
 ## Lifecycles
 ### Proposal Voting
@@ -159,11 +178,11 @@ To properly identify a token, the `tokenMessageFormat` contains a field `id`. Th
 
 ## Ethereum specific functions
 ```go
-func executeProposal(originChain ChainId, depositId uint, handlerAddress address, metadata []byte)
+func executeProposal(originChain ChainId, depositNonce uint, handlerAddress address, metadata []byte)
 ```
 - `originChain`: The unique `ChainId` denoting which chain the deposit came from.
 - `handlerAddress`: The corresponding address of a handler account.
-- `depositId`: The deposit Id that was generated on the `originChain`
+- `depositNonce`: The deposit Id that was generated on the `originChain`
 - `metadata`: Byte arrary that is decoded by a handler
 
 2. Receiving Tokens
