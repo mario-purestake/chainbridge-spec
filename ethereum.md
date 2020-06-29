@@ -78,19 +78,17 @@ Different configurations may require different interface interactions. For examp
 ### Calldata for `deposit()`
 | Data | Type | Location |
 | - | - | - |
-| Resource ID | bytes32 | 0 - 31 |
-| Amount | uint256 | 32 - 63 |
-| Recipient Address Length | uint256 | 64 - 95 |
-| Recipient Address | bytes | 96 - END |
+| Amount | uint256 | 0 - 31 |
+| Recipient Address Length | uint256 | 32 - 63 |
+| Recipient Address | bytes | 63 - END |
 
 
 ### Calldata for `executeDeposit()`
 | Data | Type | Location |
 | - | - | - |
-| Resource ID | bytes32 | 0 - 31
-| Amount | uint256 | 32 - 63
-| Recipient Address Length | uint256 | 64 - 95
-| Recipient Address | bytes | 96 - END
+| Amount | uint256 | 0 - 31 |
+| Recipient Address Length | uint256 | 32 - 63 |
+| Recipient Address | bytes | 64 - END |
 
 ## ERC721 Handler
 
@@ -102,20 +100,18 @@ The `tokenURI` should be used as the `metadata` field if the contract supports t
 ### Calldata for `deposit()`
 | Data | Type | Location |
 | - | - | - |
-| Resource ID | bytes32 | 0 - 31
-| TokenID | uint256 | 32 - 63
-| Recipient Address Length | uint256 | 64 - 95
-| Recipient Address | bytes | 96 - END
+| TokenID | uint256 | 0 - 31 |
+| Recipient Address Length | uint256 | 32 - 63 |
+| Recipient Address | bytes | 63 - END |
 
 ### Calldata for `executeDeposit()`
 | Data | Type | Location |
 | - | - | - |
-| Resource ID | bytes32 | 0 - 31
-| TokenID | uint256 | 32 - 63
-| Recipient Address Length | uint256 | 64 - 95
-| Recipient Address | bytes | 96 - 127 |
-| Metadata Length | uint256 | 128 - 159 | 
-| Metadata | bytes | 160 - END |
+| TokenID | uint256 | 0 - 31 |
+| Recipient Address Length | uint256 | 32 - 63 |
+| Recipient Address | bytes | 64 - 95 |
+| Metadata Length | uint256 | 96 - 127 | 
+| Metadata | bytes | 128 - END |
 
 
 ## Generic Handler 
@@ -137,16 +133,14 @@ An execution function must be specified. When `executeDeposit()` is called on th
 ### Calldata for `deposit()`
 | Data | Type | Location |
 | - | - | - |
-| Resource ID | 32bytes | 0 - 31 |
-| Metadata Length | uint256 | 32 - 63 |
-| Metadata | bytes | 64 - END |
+| Metadata Length | uint256 | 0 - 31 |
+| Metadata | bytes | 32 - END |
 
 ### Calldata for `execute()`
 | Data | Type | Location |
 | - | - | - |
-| Resource ID | 32bytes | 0 - 31 |
-| Metadata Length | uint256 | 32 - 63 |
-| Metadata | bytes | 64 - END |
+| Metadata Length | uint256 | 0 - 31 |
+| Metadata | bytes | 32 - END |
 
 # Administration
 
