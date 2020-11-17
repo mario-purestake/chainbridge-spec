@@ -16,11 +16,11 @@ The solidity implementation of ChainBridge should consist of a central Bridge co
 # Transfer Flow 
 
 ## As Source Chain
-1.  Some user calls the `deposit` function on the bridge contract. A `depositRecord` is created on the bridge and a call is delgated to a handler contract specified by the provided `resourceID`.
+1.  Some user calls the `deposit` function on the bridge contract. A `depositRecord` is created on the bridge and a call is delegated to a handler contract specified by the provided `resourceID`.
 
 2. The specified handler's `deposit` function validates the parameters provided by the user. If successful, a `depositRecord` is created on the handler. 
     
-3. If the call delegated to the handler is succesful, the bridge emits a `Deposit` event.
+3. If the call delegated to the handler is successful, the bridge emits a `Deposit` event.
 
 4. Relayers parse the `Deposit` event and retrieve the associated `DepositRecord` from the handler to construct a message.
 
